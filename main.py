@@ -108,8 +108,10 @@ if __name__ == '__main__':
 
     model = torchvision.models.resnet101(pretrained=True)
     model.fc = nn.Linear(in_features=2018, out_features=12)
+    if use_gpu:
+        model = model.cuda()
 
-    optimizer = optim.Adam(model.module.fc.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.fc.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, dataset_sizes)
