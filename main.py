@@ -108,15 +108,20 @@ if __name__ == '__main__':
     train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
-    model = torchvision.models.resnet101(pretrained=True)
+    model = torchvision.models.inception_v3(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=12)
+    model = torch.nn.DataParallel(model)
     if use_gpu:
         model = model.cuda()
 
-    optimizer = optim.Adam(model.fc.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.module.fc.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    train(model, train_data_loader, val_data_loader, optimizer, scheduler, 5, dataset_sizes)
 
+    optimizer = optim.Adam(model.module.parameters(), lr=1e-3)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, dataset_sizes)
+
 
     print('Done')
 
