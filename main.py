@@ -63,7 +63,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         epoch_loss = running_loss / dataset_sizes['train']
         epoch_acc = running_corrects / dataset_sizes['train']
         print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
-        val(model, val_data_loader)
+        val(model, val_data_loader, dataset_sizes)
 
 
 def val(model, val_data_loader, dataset_sizes):
