@@ -94,7 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--data_dir', help='', type=str)
     parser.add_argument('-bs' '--batch_size', help='', type=int)
     parser.add_argument('-n' '--num_epoch', help='', type=int)
-    args = parser.parse_args()
+    args = vars(parser.parse_args())
 
     data_dir = args['data_dir']
     batch_size = args['batch_size']
