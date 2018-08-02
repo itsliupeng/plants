@@ -108,7 +108,7 @@ if __name__ == '__main__':
     train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
-    model = torchvision.models.inception_v3(pretrained=True)
+    model = torchvision.models.resnet152(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=12)
     model = torch.nn.DataParallel(model)
     if use_gpu:
