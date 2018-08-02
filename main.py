@@ -92,8 +92,8 @@ def val(model, val_data_loader, dataset_sizes):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--data_dir', help='', type=str)
-    parser.add_argument('-bs' '--batch_size', help='', type=int)
-    parser.add_argument('-n' '--num_epoch', help='', type=int)
+    parser.add_argument('-bs', '--batch_size', help='', type=int)
+    parser.add_argument('-n', '--num_epoch', help='', type=int)
     args = vars(parser.parse_args())
 
     data_dir = args['data_dir']
@@ -102,12 +102,14 @@ if __name__ == '__main__':
 
     image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x])for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+    class_to_idx = image_datasets['train'].class_to_idx
+    print(class_to_idx)
 
     train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
     model = torchvision.models.resnet101(pretrained=True)
-    model.fc = nn.Linear(in_features=2018, out_features=12)
+    model.fc = nn.Linear(in_features=2048, out_features=12)
     if use_gpu:
         model = model.cuda()
 
