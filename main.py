@@ -8,6 +8,7 @@ from torch import nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 from torch import optim
+import time
 
 data_transforms = {
     'train': transforms.Compose([
@@ -35,6 +36,7 @@ use_gpu = torch.cuda.is_available()
 
 def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, dataset_sizes):
     for epoch in range(num_epochs):
+        start_time = time.time()
         model.train()
         print('Epoch {}/{}: '.format(epoch + 1, num_epochs), end='')
         scheduler.step()
@@ -63,7 +65,9 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         epoch_loss = running_loss / dataset_sizes['train']
         epoch_acc = running_corrects / dataset_sizes['train']
         print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
+        train_time = time.time()
         val(model, val_data_loader, dataset_sizes)
+        print('\ttime train {:.4f} val {:.4f}'.format(train_time - start_time, time.time() - train_time))
 
 
 def val(model, val_data_loader, dataset_sizes):
@@ -108,7 +112,7 @@ if __name__ == '__main__':
     train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
-    model = torchvision.models.resnet152(pretrained=True)
+    model = torchvision.models.inception_v3(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=12)
     model = torch.nn.DataParallel(model)
     if use_gpu:
