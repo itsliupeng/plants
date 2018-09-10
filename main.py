@@ -58,7 +58,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.data[0]
+            running_loss += loss.item()
             _, preds = torch.max(F.softmax(outputs, dim=1).data, 1)
             running_corrects += torch.sum(preds == labels.data)
 
@@ -84,7 +84,7 @@ def val(model, val_data_loader, dataset_sizes):
 
         outputs = model(inputs)
         loss = F.cross_entropy(outputs, labels)
-        running_loss += loss.data[0]
+        running_loss += loss.item()
         _, preds = torch.max(F.softmax(outputs, dim=1).data, 1)
         running_corrects += torch.sum(preds == labels.data)
 
@@ -112,7 +112,7 @@ if __name__ == '__main__':
     train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
-    model = torchvision.models.inception_v3(pretrained=True)
+    model = torchvision.models.resnet101(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=12)
     model = torch.nn.DataParallel(model)
     if use_gpu:
