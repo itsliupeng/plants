@@ -36,12 +36,13 @@ writer = SummaryWriter(log_dir='logs')
 
 
 def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs):
-    for epoch in range(num_epochs):
+    for epoch_i in range(num_epochs):
         start_time = time.time()
         model.train()
-        print('Epoch {}/{}: '.format(epoch + 1, num_epochs), end='')
         scheduler.step()
-        print('lr ', scheduler.get_lr(), end='')
+
+        print('Epoch {}/{}: lr {}'.format(epoch_i + 1, num_epochs, scheduler.get_lr()), end='')
+        writer.add_scalar('lr', scheduler.get_lr(), global_step=epoch_i)
 
         running_loss = 0.0
         running_corrects = 0.0
@@ -68,6 +69,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         epoch_acc = running_corrects / train_dataset_size
         print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
         train_end_time = time.time()
+
         val(model, val_data_loader)
         val_end_time = time.time()
 
@@ -75,10 +77,10 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         val_time = val_end_time - train_end_time
         print('\ttime train {:.4f} val {:.4f}'.format(train_time, val_time))
 
-        writer.add_scalar('epoch_loss', epoch_loss, global_step=epoch)
-        writer.add_scalar('epoch_acc', epoch_acc, global_step=epoch)
-        writer.add_scalar('epoch_train_time', train_time, global_step=epoch)
-        writer.add_scalar('epoch_val_time', val_time, global_step=epoch)
+        writer.add_scalar('epoch_loss', epoch_loss, global_step=epoch_i)
+        writer.add_scalar('epoch_acc', epoch_acc, global_step=epoch_i)
+        writer.add_scalar('epoch_train_time', train_time, global_step=epoch_i)
+        writer.add_scalar('epoch_val_time', val_time, global_step=epoch_i)
 
 
 def val(model, val_data_loader):
@@ -120,8 +122,8 @@ if __name__ == '__main__':
     class_to_idx = image_datasets['train'].class_to_idx
     print(class_to_idx)
 
-    train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
-    val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=50, pin_memory=True)
+    val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=False, num_workers=50, pin_memory=True)
 
     model = torchvision.models.resnet50(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=12)
@@ -129,12 +131,9 @@ if __name__ == '__main__':
     if use_gpu:
         model = model.cuda()
 
-    optimizer = optim.Adam(model.module.fc.parameters(), lr=1e-3)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-    train(model, train_data_loader, val_data_loader, optimizer, scheduler, 5)
+    optimizer = optim.SGD(model.module.parameters(), lr=1e-3, momentum=0.9)
+    scheduler =  optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10,30,80], gamma=0.1)
 
-    optimizer = optim.Adam(model.module.parameters(), lr=1e-3)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch)
 
     writer.close()
