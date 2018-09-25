@@ -8,6 +8,7 @@ import torchvision
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from tensorboardX import SummaryWriter
 
 data_transforms = {
     'train': transforms.Compose([
@@ -31,7 +32,7 @@ data_transforms = {
 }
 
 use_gpu = torch.cuda.is_available()
-
+writer = SummaryWriter(log_dir='logs')
 
 def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, dataset_sizes):
     for epoch in range(num_epochs):
@@ -45,6 +46,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         running_corrects = 0.0
 
         for inputs, labels in train_data_loader:
+            writer.add_image(inputs[0:5])
             if use_gpu:
                 inputs = inputs.cuda()
                 labels = labels.cuda()
@@ -62,9 +64,18 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         epoch_loss = running_loss / dataset_sizes['train']
         epoch_acc = running_corrects / dataset_sizes['train']
         print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
-        train_time = time.time()
+        train_end_time = time.time()
         val(model, val_data_loader, dataset_sizes)
-        print('\ttime train {:.4f} val {:.4f}'.format(train_time - start_time, time.time() - train_time))
+        val_end_time = time.time()
+
+        train_time = train_end_time - start_time
+        val_time = val_end_time - train_end_time
+        print('\ttime train {:.4f} val {:.4f}'.format(train_time, val_time))
+
+        writer.add_scalar('epoch_loss', epoch_loss, global_step=epoch)
+        writer.add_scalar('epoch_acc', epoch_acc, global_step=epoch)
+        writer.add_scalar('epoch_train_time', train_time, global_step=epoch)
+        writer.add_scalar('epoch_val_time', val_time, global_step=epoch)
 
 
 def val(model, val_data_loader, dataset_sizes):
@@ -121,4 +132,6 @@ if __name__ == '__main__':
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, dataset_sizes)
 
+    writer.close()
     print('Done')
+
