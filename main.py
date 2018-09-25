@@ -32,10 +32,10 @@ data_transforms = {
 }
 
 use_gpu = torch.cuda.is_available()
-writer = SummaryWriter(log_dir='logs')
+tb_writer = SummaryWriter(log_dir='logs')
 
 
-def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs):
+def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, writer):
     for epoch_i in range(num_epochs):
         start_time = time.time()
         model.train()
@@ -56,7 +56,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
 
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = F.cross_entropy(outputs, labels, size_average=False)
+            loss = F.cross_entropy(outputs, labels, reduce=False)
             loss.backward()
             optimizer.step()
 
@@ -96,7 +96,7 @@ def val(model, val_data_loader):
             labels = labels.cuda()
 
         outputs = model(inputs)
-        loss = F.cross_entropy(outputs, labels)
+        loss = F.cross_entropy(outputs, labels, reduce=False)
         running_loss += loss.item()
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
@@ -132,10 +132,10 @@ if __name__ == '__main__':
         model = model.cuda()
 
     optimizer = optim.SGD(model.module.parameters(), lr=1e-3, momentum=0.9)
-    scheduler =  optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10,30,80], gamma=0.1)
+    scheduler =  optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10,20,30,80], gamma=0.1)
 
-    train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch)
+    train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, writer=tb_writer)
 
-    writer.close()
+    tb_writer.close()
     print('Done')
 
