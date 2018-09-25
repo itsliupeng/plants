@@ -46,8 +46,6 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         running_corrects = 0.0
 
         for inputs, labels in train_data_loader:
-            inputs = Variable(inputs)
-            labels = Variable(labels)
             if use_gpu:
                 inputs = inputs.cuda()
                 labels = labels.cuda()
@@ -59,8 +57,8 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             optimizer.step()
 
             running_loss += loss.item()
-            _, preds = torch.max(F.softmax(outputs, dim=1).data, 1)
-            running_corrects += torch.sum(preds == labels.data)
+            _, preds = torch.max(F.softmax(outputs, dim=1), 1)
+            running_corrects += torch.sum(preds == labels).item()
 
         epoch_loss = running_loss / dataset_sizes['train']
         epoch_acc = running_corrects / dataset_sizes['train']
@@ -76,8 +74,6 @@ def val(model, val_data_loader, dataset_sizes):
     running_corrects = 0.0
 
     for inputs, labels in val_data_loader:
-        inputs = Variable(inputs)
-        labels = Variable(labels)
         if use_gpu:
             inputs = inputs.cuda()
             labels = labels.cuda()
@@ -85,8 +81,8 @@ def val(model, val_data_loader, dataset_sizes):
         outputs = model(inputs)
         loss = F.cross_entropy(outputs, labels)
         running_loss += loss.item()
-        _, preds = torch.max(F.softmax(outputs, dim=1).data, 1)
-        running_corrects += torch.sum(preds == labels.data)
+        _, preds = torch.max(F.softmax(outputs, dim=1), 1)
+        running_corrects += torch.sum(preds == labels).item()
 
     epoch_loss = running_loss / dataset_sizes['val']
     epoch_acc = running_corrects / dataset_sizes['val']
@@ -112,7 +108,7 @@ if __name__ == '__main__':
     train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
 
-    model = torchvision.models.resnet101(pretrained=True)
+    model = torchvision.models.resnet50(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=12)
     model = torch.nn.DataParallel(model)
     if use_gpu:
