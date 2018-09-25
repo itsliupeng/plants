@@ -56,7 +56,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
 
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = F.cross_entropy(outputs, labels, reduce=False)
+            loss = F.cross_entropy(outputs, labels, size_average=False)
             loss.backward()
             optimizer.step()
 
@@ -96,7 +96,7 @@ def val(model, val_data_loader):
             labels = labels.cuda()
 
         outputs = model(inputs)
-        loss = F.cross_entropy(outputs, labels, reduce=False)
+        loss = F.cross_entropy(outputs, labels, size_average=False)
         running_loss += loss.item()
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
