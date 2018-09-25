@@ -131,11 +131,11 @@ if __name__ == '__main__':
 
     optimizer = optim.Adam(model.module.fc.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-    train(model, train_data_loader, val_data_loader, optimizer, scheduler, 5, dataset_sizes)
+    train(model, train_data_loader, val_data_loader, optimizer, scheduler, 5)
 
     optimizer = optim.Adam(model.module.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-    train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, dataset_sizes)
+    train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch)
 
     writer.close()
     print('Done')
