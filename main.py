@@ -34,7 +34,8 @@ data_transforms = {
 use_gpu = torch.cuda.is_available()
 writer = SummaryWriter(log_dir='logs')
 
-def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, dataset_sizes):
+
+def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs):
     for epoch in range(num_epochs):
         start_time = time.time()
         model.train()
@@ -46,7 +47,8 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         running_corrects = 0.0
 
         for inputs, labels in train_data_loader:
-            writer.add_image(inputs[0:5])
+            writer.add_image('train_image', inputs[0:5])
+
             if use_gpu:
                 inputs = inputs.cuda()
                 labels = labels.cuda()
@@ -61,11 +63,12 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             _, preds = torch.max(F.softmax(outputs, dim=1), 1)
             running_corrects += torch.sum(preds == labels).item()
 
-        epoch_loss = running_loss / dataset_sizes['train']
-        epoch_acc = running_corrects / dataset_sizes['train']
+        train_dataset_size = len(train_data_loader.dataset)
+        epoch_loss = running_loss / train_dataset_size
+        epoch_acc = running_corrects / train_dataset_size
         print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
         train_end_time = time.time()
-        val(model, val_data_loader, dataset_sizes)
+        val(model, val_data_loader)
         val_end_time = time.time()
 
         train_time = train_end_time - start_time
@@ -78,10 +81,12 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         writer.add_scalar('epoch_val_time', val_time, global_step=epoch)
 
 
-def val(model, val_data_loader, dataset_sizes):
+def val(model, val_data_loader):
     model.eval()
     running_loss = 0.0
     running_corrects = 0.0
+
+    val_dataset_size = len(val_data_loader.dataset)
 
     for inputs, labels in val_data_loader:
         if use_gpu:
@@ -94,8 +99,8 @@ def val(model, val_data_loader, dataset_sizes):
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
 
-    epoch_loss = running_loss / dataset_sizes['val']
-    epoch_acc = running_corrects / dataset_sizes['val']
+    epoch_loss = running_loss / val_dataset_size
+    epoch_acc = running_corrects / val_dataset_size
     print('\t{:5s} loss {:.4f} acc {:.4f}'.format('val', epoch_loss, epoch_acc))
 
 
