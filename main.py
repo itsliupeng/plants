@@ -42,7 +42,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         scheduler.step()
 
         print('Epoch {}/{}: lr {}'.format(epoch_i + 1, num_epochs, scheduler.get_lr()), end='')
-        writer.add_scalar('lr', scheduler.get_lr(), global_step=epoch_i)
+        writer.add_scalar('lr', scheduler.get_lr()[0], global_step=epoch_i)
 
         running_loss = 0.0
         running_corrects = 0.0
