@@ -1,14 +1,13 @@
-import torch
-from torchvision import transforms, datasets
-from torch.utils.data import DataLoader
-import os
 import argparse
-import torchvision
-from torch import nn
-from torch.autograd import Variable
-import torch.nn.functional as F
-from torch import optim
+import os
 import time
+
+import torch
+import torch.nn.functional as F
+import torchvision
+from torch import nn, optim
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
 
 data_transforms = {
     'train': transforms.Compose([
@@ -100,7 +99,7 @@ if __name__ == '__main__':
     batch_size = args['batch_size']
     num_epoch = args['num_epoch']
 
-    image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x])for x in ['train', 'val']}
+    image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
     class_to_idx = image_datasets['train'].class_to_idx
     print(class_to_idx)
@@ -122,8 +121,4 @@ if __name__ == '__main__':
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, dataset_sizes)
 
-
     print('Done')
-
-
-
