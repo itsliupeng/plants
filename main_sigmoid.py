@@ -108,7 +108,6 @@ if __name__ == '__main__':
     data_dir = args['data_dir']
     batch_size = args['batch_size']
     num_epoch = args['num_epoch']
-    num_class = args['num_class']
 
     image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x], raw_image=True) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
