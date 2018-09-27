@@ -1,6 +1,7 @@
 import argparse
 import os
 import time
+import cv2
 
 import torch
 import torch.nn.functional as F
@@ -12,6 +13,7 @@ from torch.utils.data import DataLoader
 from utils import ImageDataSetWithRaw, cat_image_show, data_transforms, draw_label_tensor
 
 use_gpu = torch.cuda.is_available()
+import numpy as np
 
 
 # noinspection PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames
@@ -66,11 +68,42 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             writer.add_scalar('time_epoch_val', val_time, global_step=epoch_i)
 
 
+def returnCAM(feature_conv, weight_softmax, preds):
+    # generate the class activation maps upsample to 256x256
+    bz, nc, height, width = feature_conv.shape
+    output_cam = []
+    w = weight_softmax[preds]
+    f = feature_conv.reshape((bz, nc, height*width))
+    assert w.size(0) == f.size(0)
+    result = []
+    for i in range(w.size(0)):
+        cam = w[i].view((1, -1)).mm(f[i]).reshape((height, width))
+        cam = cam - torch.min(cam)
+        cam_img = cam / torch.max(cam)
+        cam_img = cam_img.cpu().data.numpy()
+        cam_img = np.uint8(255 * cam_img)
+        heatmap = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
+        result.append(heatmap)
+
+    return result
+
+
 # noinspection PyShadowingNames,PyShadowingNames
-def val(model, val_data_loader, epoch_i, writer=None):
+def val(model, val_data_loader, epoch_i=0, writer=None):
     model.eval()
     running_loss = 0.0
     running_corrects = 0.0
+
+    # hook the feature extractor
+    features_blobs = []
+
+    def hook_feature(module, input, output):
+        features_blobs.append(output)
+
+    model.module._modules.get("layer4").register_forward_hook(hook_feature)
+    # get the softmax weight
+    weight_softmax = list(model.module.parameters())[-2]
+
 
     val_dataset_size = len(val_data_loader.dataset)
 
@@ -84,6 +117,10 @@ def val(model, val_data_loader, epoch_i, writer=None):
         running_loss += loss.item()
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
+
+        CAMs = returnCAM(features_blobs[0:8], weight_softmax, preds[0:8])
+
+
 
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
