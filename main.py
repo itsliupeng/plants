@@ -38,6 +38,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
 
             optimizer.zero_grad()
             outputs = model(inputs)
+            outputs.rehape(outputs.shape[0])
             loss = F.binary_cross_entropy_with_logits(outputs, labels, size_average=False)
             loss.backward()
             optimizer.step()
@@ -80,6 +81,7 @@ def val(model, val_data_loader, epoch_i, writer=None):
             labels = labels.cuda()
 
         outputs = model(inputs)
+        outputs.rehape(outputs.shape[0])
         loss = F.binary_cross_entropy_with_logits(outputs, labels, size_average=False)
         running_loss += loss.item()
         preds = F.sigmoid(outputs) > 0.5
