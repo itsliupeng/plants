@@ -103,7 +103,6 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/plants')
     parser.add_argument('-b', '--batch_size', help='', type=int, default=4)
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
-    parser.add_argument('--num_class', help='', type=int, default=2)
     args = vars(parser.parse_args())
 
     data_dir = args['data_dir']
@@ -120,7 +119,7 @@ if __name__ == '__main__':
     val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
 
     model = torchvision.models.resnet50(pretrained=True)
-    model.fc = nn.Linear(in_features=2048, out_features=num_class)
+    model.fc = nn.Linear(in_features=2048, out_features=1)
     model = torch.nn.DataParallel(model)
     if use_gpu:
         model = model.cuda()
