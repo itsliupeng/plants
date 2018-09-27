@@ -29,6 +29,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         running_corrects = 0.0
 
         for inputs, labels, raw_images in train_data_loader:
+            labels = labels.type_as(inputs)
             if writer:
                 writer.add_image('raw-crop-label', cat_image_show(raw_images[0:20], inputs[0:20], draw_label_tensor(labels[0:20])))
 
@@ -38,14 +39,14 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
 
             optimizer.zero_grad()
             outputs = model(inputs)
-            outputs.rehape(outputs.shape[0])
+            outputs = outputs.reshape(outputs.shape[0])
             loss = F.binary_cross_entropy_with_logits(outputs, labels, size_average=False)
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
             preds = F.sigmoid(outputs) > 0.5
-            running_corrects += torch.sum(preds == labels).item()
+            running_corrects += torch.sum(preds == labels.type_as(preds)).item()
 
         train_dataset_size = len(train_data_loader.dataset)
         epoch_loss = running_loss / train_dataset_size
@@ -76,16 +77,17 @@ def val(model, val_data_loader, epoch_i, writer=None):
     val_dataset_size = len(val_data_loader.dataset)
 
     for inputs, labels, _ in val_data_loader:
+        labels = labels.type_as(inputs)
         if use_gpu:
             inputs = inputs.cuda()
             labels = labels.cuda()
 
         outputs = model(inputs)
-        outputs.rehape(outputs.shape[0])
+        outputs = outputs.rehape(outputs.shape[0])
         loss = F.binary_cross_entropy_with_logits(outputs, labels, size_average=False)
         running_loss += loss.item()
         preds = F.sigmoid(outputs) > 0.5
-        running_corrects += torch.sum(preds == labels).item()
+        running_corrects += torch.sum(preds == labels.type_as(preds)).item()
 
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
