@@ -95,13 +95,15 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/plants')
     parser.add_argument('-b', '--batch_size', help='', type=int, default=4)
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
+    parser.add_argument('--num_class', help='', type=int, default=2)
     args = vars(parser.parse_args())
 
     data_dir = args['data_dir']
     batch_size = args['batch_size']
     num_epoch = args['num_epoch']
+    num_class = args['num_class']
 
-    image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
+    image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x], raw_image=True) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
     class_to_idx = image_datasets['train'].class_to_idx
     print(class_to_idx)
@@ -110,7 +112,7 @@ if __name__ == '__main__':
     val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
 
     model = torchvision.models.resnet50(pretrained=True)
-    model.fc = nn.Linear(in_features=2048, out_features=12)
+    model.fc = nn.Linear(in_features=2048, out_features=num_class)
     model = torch.nn.DataParallel(model)
     if use_gpu:
         model = model.cuda()

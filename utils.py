@@ -7,9 +7,10 @@ from torchvision.utils import make_grid
 
 
 class ImageDataSetWithRaw(ImageFolder):
-    def __init__(self, root, transform):
+    def __init__(self, root, transform, raw_image=False):
         super(ImageDataSetWithRaw, self).__init__(root, transform)
         self.to_tensor = self.to_tensor = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
+        self.raw_image = raw_image
 
     def __getitem__(self, index):
         """
@@ -21,13 +22,14 @@ class ImageDataSetWithRaw(ImageFolder):
         """
         path, target = self.samples[index]
         sample = self.loader(path)
-        sample_raw = self.to_tensor(sample)
-        if self.transform is not None:
-            sample = self.transform(sample)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
 
-        return sample, target, sample_raw
+        if self.transform is not None:
+            sample_aug = self.transform(sample)
+
+        if self.raw_image:
+            return sample_aug, target, self.to_tensor(sample)
+        else:
+            return sample_aug, target
 
 
 def draw_label_image(text: str, size=(224, 224)):
