@@ -75,7 +75,7 @@ def returnCAM(feature_conv, weight_softmax, preds):
     w = weight_softmax[preds]
     f = feature_conv.reshape((bz, nc, height*width))
     assert w.size(0) == f.size(0)
-    result = []
+    tensors = []
     for i in range(w.size(0)):
         cam = w[i].view((1, -1)).mm(f[i]).reshape((height, width))
         cam = cam - torch.min(cam)
@@ -83,8 +83,9 @@ def returnCAM(feature_conv, weight_softmax, preds):
         cam_img = cam_img.cpu().data.numpy()
         cam_img = np.uint8(255 * cam_img)
         heatmap = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
-        result.append(heatmap)
+        tensors.append(torch.Tensor(np.transpose(heatmap, (2, 0, 1))))
 
+    result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
     return result
 
 
@@ -118,9 +119,8 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
 
-        CAMs = returnCAM(features_blobs[0:8], weight_softmax, preds[0:8])
-
-
+        cams = returnCAM(features_blobs[0:8], weight_softmax, preds[0:8])
+        writer.add_image('cam', torchvision.utils.make_grid(cams))
 
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
