@@ -5,16 +5,16 @@ import time
 import torch
 import torch.nn.functional as F
 import torchvision
+from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-from tensorboardX import SummaryWriter
-from utils import ImageDataSetWithRaw, data_transforms
 
+from utils import ImageDataSetWithRaw, cat_image_show, data_transforms, draw_label_tensor
 
 use_gpu = torch.cuda.is_available()
 
 
+# noinspection PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames
 def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, writer=None):
     for epoch_i in range(num_epochs):
         start_time = time.time()
@@ -30,7 +30,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
 
         for inputs, labels, raw_images in train_data_loader:
             if writer:
-                writer.add_image('raw-crop-label', cat_images_show(image_show(raw_images), image_show(inputs), label_show(labels)))
+                writer.add_image('raw-crop-label', cat_image_show(raw_images[0:20], inputs[0:20], draw_label_tensor(labels[0:20])))
 
             if use_gpu:
                 inputs = inputs.cuda()
@@ -66,6 +66,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             writer.add_scalar('epoch_val_time', val_time, global_step=epoch_i)
 
 
+# noinspection PyShadowingNames,PyShadowingNames
 def val(model, val_data_loader):
     model.eval()
     running_loss = 0.0
@@ -73,7 +74,7 @@ def val(model, val_data_loader):
 
     val_dataset_size = len(val_data_loader.dataset)
 
-    for inputs, labels in val_data_loader:
+    for inputs, labels, _ in val_data_loader:
         if use_gpu:
             inputs = inputs.cuda()
             labels = labels.cuda()
@@ -92,7 +93,7 @@ def val(model, val_data_loader):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/plants')
-    parser.add_argument('-bs', '--batch_size', help='', type=int, default=4)
+    parser.add_argument('-b', '--batch_size', help='', type=int, default=4)
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
     args = vars(parser.parse_args())
 
@@ -115,10 +116,9 @@ if __name__ == '__main__':
         model = model.cuda()
 
     optimizer = optim.Adam(model.module.parameters(), lr=1e-3)
-    scheduler =  optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10,20,30,80], gamma=0.1)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 30, 80], gamma=0.1)
 
     tb_writer = SummaryWriter(log_dir='logs')
     train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, writer=tb_writer)
     tb_writer.close()
     print('Done')
-

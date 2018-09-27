@@ -1,3 +1,5 @@
-```buildoutcfg
-python main.py -d /home/liupeng/data/plants -bs 64 -n 512
+
+```
+python main.py -d /home/liupeng/data/plants -b 64 -n512
+
 ```

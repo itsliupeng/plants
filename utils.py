@@ -1,12 +1,14 @@
+import torch
 import torchvision
 from PIL import Image, ImageDraw, ImageFont
-from torchvision.datasets import ImageFolder
 from torchvision import transforms
+from torchvision.datasets import ImageFolder
+from torchvision.utils import make_grid
 
 
 class ImageDataSetWithRaw(ImageFolder):
     def __init__(self, root, transform):
-        super(ImageFolder, self).__init__(self, root, transform)
+        super(ImageDataSetWithRaw, self).__init__(root, transform)
         self.to_tensor = self.to_tensor = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
 
     def __getitem__(self, index):
@@ -19,12 +21,13 @@ class ImageDataSetWithRaw(ImageFolder):
         """
         path, target = self.samples[index]
         sample = self.loader(path)
+        sample_raw = self.to_tensor(sample)
         if self.transform is not None:
-            x = self.transform(sample)
+            sample = self.transform(sample)
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return x, target, self.to_tensor(sample)
+        return sample, target, sample_raw
 
 
 def draw_label_image(text: str, size=(224, 224)):
@@ -50,8 +53,16 @@ def draw_label_image(text: str, size=(224, 224)):
 to_tensor = torchvision.transforms.ToTensor()
 
 
-def draw_label_tensor(text: str, size=(224, 224)):
-    return to_tensor(draw_label_image(text, size))
+def draw_label_tensor(label: torch.Tensor, size=(224, 224)):
+    return torch.cat([to_tensor(draw_label_image(str(i), size)) for i in label.numpy()]).reshape((-1, 3, size[0], size[1]))
+
+
+def cat_image_show(*tensors):
+    total = torch.cat([make_grid(i, nrow=10, normalize=True) for i in tensors])
+    new_shape = [len(tensors)] + list(tensors[0].shape)
+    total = total.reshape(new_shape)
+    return torchvision.utils.make_grid(total, nrow=1, normalize=True, scale_each=True)
+
 
 data_transforms = {
     'train': transforms.Compose([
