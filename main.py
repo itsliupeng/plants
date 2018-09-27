@@ -9,46 +9,28 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from tensorboardX import SummaryWriter
+from utils import ImageDataSetWithRaw, data_transforms
 
-data_transforms = {
-    'train': transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-    'val': transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-    'test': transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-}
 
 use_gpu = torch.cuda.is_available()
-tb_writer = SummaryWriter(log_dir='logs')
 
 
-def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, writer):
+def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, writer=None):
     for epoch_i in range(num_epochs):
         start_time = time.time()
         model.train()
         scheduler.step()
 
         print('Epoch {}/{}: lr {}'.format(epoch_i + 1, num_epochs, scheduler.get_lr()), end='')
-        writer.add_scalar('lr', scheduler.get_lr()[0], global_step=epoch_i)
+        if writer:
+            writer.add_scalar('lr', scheduler.get_lr()[0], global_step=epoch_i)
 
         running_loss = 0.0
         running_corrects = 0.0
 
-        for inputs, labels in train_data_loader:
-            writer.add_image('train_image', inputs[0:5])
+        for inputs, labels, raw_images in train_data_loader:
+            if writer:
+                writer.add_image('raw-crop-label', cat_images_show(image_show(raw_images), image_show(inputs), label_show(labels)))
 
             if use_gpu:
                 inputs = inputs.cuda()
@@ -77,10 +59,11 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         val_time = val_end_time - train_end_time
         print('\ttime train {:.4f} val {:.4f}'.format(train_time, val_time))
 
-        writer.add_scalar('epoch_loss', epoch_loss, global_step=epoch_i)
-        writer.add_scalar('epoch_acc', epoch_acc, global_step=epoch_i)
-        writer.add_scalar('epoch_train_time', train_time, global_step=epoch_i)
-        writer.add_scalar('epoch_val_time', val_time, global_step=epoch_i)
+        if writer:
+            writer.add_scalar('epoch_loss', epoch_loss, global_step=epoch_i)
+            writer.add_scalar('epoch_acc', epoch_acc, global_step=epoch_i)
+            writer.add_scalar('epoch_train_time', train_time, global_step=epoch_i)
+            writer.add_scalar('epoch_val_time', val_time, global_step=epoch_i)
 
 
 def val(model, val_data_loader):
@@ -108,22 +91,22 @@ def val(model, val_data_loader):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--data_dir', help='', type=str)
-    parser.add_argument('-bs', '--batch_size', help='', type=int)
-    parser.add_argument('-n', '--num_epoch', help='', type=int)
+    parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/plants')
+    parser.add_argument('-bs', '--batch_size', help='', type=int, default=4)
+    parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
     args = vars(parser.parse_args())
 
     data_dir = args['data_dir']
     batch_size = args['batch_size']
     num_epoch = args['num_epoch']
 
-    image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
+    image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
     class_to_idx = image_datasets['train'].class_to_idx
     print(class_to_idx)
 
-    train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=50, pin_memory=True)
-    val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=False, num_workers=50, pin_memory=True)
+    train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
+    val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
 
     model = torchvision.models.resnet50(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=12)
@@ -131,11 +114,11 @@ if __name__ == '__main__':
     if use_gpu:
         model = model.cuda()
 
-    optimizer = optim.SGD(model.module.parameters(), lr=1e-3, momentum=0.9)
+    optimizer = optim.Adam(model.module.parameters(), lr=1e-3)
     scheduler =  optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10,20,30,80], gamma=0.1)
 
+    tb_writer = SummaryWriter(log_dir='logs')
     train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, writer=tb_writer)
-
     tb_writer.close()
     print('Done')
 
