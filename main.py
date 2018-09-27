@@ -60,10 +60,10 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         print('\ttime train {:.4f} val {:.4f}'.format(train_time, val_time))
 
         if writer:
-            writer.add_scalar('epoch_train_loss', epoch_loss, global_step=epoch_i)
-            writer.add_scalar('epoch_train_acc', epoch_acc, global_step=epoch_i)
-            writer.add_scalar('epoch_train_time', train_time, global_step=epoch_i)
-            writer.add_scalar('epoch_val_time', val_time, global_step=epoch_i)
+            writer.add_scalar('loss_epoch_train', epoch_loss, global_step=epoch_i)
+            writer.add_scalar('acc_epoch_train', epoch_acc, global_step=epoch_i)
+            writer.add_scalar('time_epoch_train', train_time, global_step=epoch_i)
+            writer.add_scalar('time_epoch_val', val_time, global_step=epoch_i)
 
 
 # noinspection PyShadowingNames,PyShadowingNames
@@ -90,8 +90,8 @@ def val(model, val_data_loader, epoch_i, writer=None):
     print('\t{:5s} loss {:.4f} acc {:.4f}'.format('val', epoch_loss, epoch_acc))
 
     if writer:
-        writer.add_scalar('epoch_val_loss', epoch_loss, global_step=epoch_i)
-        writer.add_scalar('epoch_val_acc', epoch_acc, global_step=epoch_i)
+        writer.add_scalar('loss_epoch_val', epoch_loss, global_step=epoch_i)
+        writer.add_scalar('acc_epoch_val', epoch_acc, global_step=epoch_i)
 
 
 if __name__ == '__main__':
