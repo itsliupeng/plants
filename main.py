@@ -83,7 +83,7 @@ def val(model, val_data_loader, epoch_i, writer=None):
             labels = labels.cuda()
 
         outputs = model(inputs)
-        outputs = outputs.rehape(outputs.shape[0])
+        outputs = outputs.reshape(outputs.shape[0])
         loss = F.binary_cross_entropy_with_logits(outputs, labels, size_average=False)
         running_loss += loss.item()
         preds = F.sigmoid(outputs) > 0.5
