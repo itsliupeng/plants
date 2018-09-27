@@ -38,12 +38,12 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
 
             optimizer.zero_grad()
             outputs = model(inputs)
-            loss = F.cross_entropy(outputs, labels, size_average=False)
+            loss = F.binary_cross_entropy_with_logits(outputs, labels, size_average=False)
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
-            _, preds = torch.max(F.softmax(outputs, dim=1), 1)
+            preds = F.sigmoid(outputs) > 0.5
             running_corrects += torch.sum(preds == labels).item()
 
         train_dataset_size = len(train_data_loader.dataset)
@@ -80,9 +80,9 @@ def val(model, val_data_loader, epoch_i, writer=None):
             labels = labels.cuda()
 
         outputs = model(inputs)
-        loss = F.cross_entropy(outputs, labels, size_average=False)
+        loss = F.binary_cross_entropy_with_logits(outputs, labels, size_average=False)
         running_loss += loss.item()
-        _, preds = torch.max(F.softmax(outputs, dim=1), 1)
+        preds = F.sigmoid(outputs) > 0.5
         running_corrects += torch.sum(preds == labels).item()
 
     epoch_loss = running_loss / val_dataset_size
