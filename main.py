@@ -52,7 +52,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
         train_end_time = time.time()
 
-        val(model, val_data_loader)
+        val(model, val_data_loader, epoch_i, writer)
         val_end_time = time.time()
 
         train_time = train_end_time - start_time
@@ -60,14 +60,14 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         print('\ttime train {:.4f} val {:.4f}'.format(train_time, val_time))
 
         if writer:
-            writer.add_scalar('epoch_loss', epoch_loss, global_step=epoch_i)
-            writer.add_scalar('epoch_acc', epoch_acc, global_step=epoch_i)
+            writer.add_scalar('epoch_train_loss', epoch_loss, global_step=epoch_i)
+            writer.add_scalar('epoch_train_acc', epoch_acc, global_step=epoch_i)
             writer.add_scalar('epoch_train_time', train_time, global_step=epoch_i)
             writer.add_scalar('epoch_val_time', val_time, global_step=epoch_i)
 
 
 # noinspection PyShadowingNames,PyShadowingNames
-def val(model, val_data_loader):
+def val(model, val_data_loader, epoch_i, writer=None):
     model.eval()
     running_loss = 0.0
     running_corrects = 0.0
@@ -88,6 +88,10 @@ def val(model, val_data_loader):
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
     print('\t{:5s} loss {:.4f} acc {:.4f}'.format('val', epoch_loss, epoch_acc))
+
+    if writer:
+        writer.add_scalar('epoch_val_loss', epoch_loss, global_step=epoch_i)
+        writer.add_scalar('epoch_val_acc', epoch_acc, global_step=epoch_i)
 
 
 if __name__ == '__main__':
