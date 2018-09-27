@@ -119,7 +119,7 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
 
-        cams = returnCAM(features_blobs[0:8], weight_softmax, preds[0:8])
+        cams = returnCAM(features_blobs[0][0:8], weight_softmax, preds[0:8])
         writer.add_image('cam', torchvision.utils.make_grid(cams))
 
     epoch_loss = running_loss / val_dataset_size
