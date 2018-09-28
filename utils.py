@@ -14,7 +14,6 @@ class ImageDataSetWithRaw(ImageFolder):
         super(ImageDataSetWithRaw, self).__init__(root, transform)
         self.to_tensor = self.to_tensor = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor()])
         self.raw_image = raw_image
-        self.loader = torchvision.datasets.folder.default_loader
 
     def __getitem__(self, index):
         """
@@ -52,6 +51,7 @@ class ImageDataSetWithName(Dataset):
         self.root = root
         self.transform = transform
         self.samples = _make_dataset(root)
+        self.loader = torchvision.datasets.folder.default_loader
 
     def __getitem__(self, index):
         path = self.samples[index]
