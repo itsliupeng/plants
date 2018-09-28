@@ -5,6 +5,7 @@ from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from torchvision.utils import make_grid
 import os
+from torch.utils.data import Dataset
 
 
 class ImageDataSetWithRaw(ImageFolder):
@@ -43,8 +44,9 @@ def _make_dataset(dir_name):
     return images
 
 
-class ImageDataSetWithName(torchvision.data.Dataset):
+class ImageDataSetWithName(Dataset):
     def __init__(self, root, transform):
+        super(ImageDataSetWithName, self).__init__()
         self.root = root
         self.transform = transform
         self.samples = _make_dataset(root)
@@ -59,6 +61,8 @@ class ImageDataSetWithName(torchvision.data.Dataset):
         name = os.path.basename(path)
         return sample_aug, name
 
+    def __len__(self):
+        return len(self.samples)
 
 
 def draw_label_image(text: str, size=(224, 224)):
