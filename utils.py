@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from torchvision.utils import make_grid
+import os
 
 
 class ImageDataSetWithRaw(ImageFolder):
@@ -85,3 +86,22 @@ data_transforms = {
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 }
+
+
+def save_ckpt(output_dir, model, optimizer, epoch, batch_size):
+    """Save checkpoint"""
+    ckpt_dir = os.path.join(output_dir, 'ckpt')
+    if not os.path.exists(ckpt_dir):
+        os.makedirs(ckpt_dir)
+    save_name = os.path.join(ckpt_dir, 'model_epoch{}.pth'.format(epoch))
+    if isinstance(model, torch.nn.DataParallel):
+        model = model.module
+
+    torch.save({
+        'epoch': epoch,
+        'batch_size': batch_size,
+        'model': model.state_dict(),
+        'optimizer': optimizer.state_dict()
+    }, save_name)
+
+    print(f'save model {save_name} in {output_dir}')

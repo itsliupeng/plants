@@ -9,9 +9,9 @@ import torchvision
 from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchvision.utils import make_grid
+import traceback
 
-from utils import ImageDataSetWithRaw, cat_image_show, data_transforms, draw_label_tensor
+from utils import ImageDataSetWithRaw, cat_image_show, data_transforms, draw_label_tensor, save_ckpt
 
 use_gpu = torch.cuda.is_available()
 import numpy as np
@@ -19,54 +19,59 @@ import numpy as np
 
 # noinspection PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames
 def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, writer=None):
-    for epoch_i in range(num_epochs):
-        start_time = time.time()
-        model.train()
-        scheduler.step()
+    try:
+        for epoch_i in range(num_epochs):
+            start_time = time.time()
+            model.train()
+            scheduler.step()
 
-        print('Epoch {}/{}: lr {}'.format(epoch_i + 1, num_epochs, scheduler.get_lr()), end='')
-        if writer:
-            writer.add_scalar('lr', scheduler.get_lr()[0], global_step=epoch_i)
+            print('Epoch {}/{}: lr {}'.format(epoch_i + 1, num_epochs, scheduler.get_lr()), end='')
+            if writer:
+                writer.add_scalar('lr', scheduler.get_lr()[0], global_step=epoch_i)
 
-        running_loss = 0.0
-        running_corrects = 0.0
+            running_loss = 0.0
+            running_corrects = 0.0
 
-        for idx, (inputs, labels, raw_images) in enumerate(train_data_loader):
-            if writer and idx % write_image_freq == 0:
-                writer.add_image('raw-crop-label', cat_image_show(raw_images[0:20], inputs[0:20], draw_label_tensor(labels[0:20])), global_step=idx)
+            for idx, (inputs, labels, raw_images) in enumerate(train_data_loader):
+                if writer and idx % write_image_freq == 0:
+                    writer.add_image('raw-crop-label', cat_image_show(raw_images[0:20], inputs[0:20], draw_label_tensor(labels[0:20])), global_step=idx)
 
-            if use_gpu:
-                inputs = inputs.cuda()
-                labels = labels.cuda()
+                if use_gpu:
+                    inputs = inputs.cuda()
+                    labels = labels.cuda()
 
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = F.cross_entropy(outputs, labels, size_average=False)
-            loss.backward()
-            optimizer.step()
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = F.cross_entropy(outputs, labels, size_average=False)
+                loss.backward()
+                optimizer.step()
 
-            running_loss += loss.item()
-            _, preds = torch.max(F.softmax(outputs, dim=1), 1)
-            running_corrects += torch.sum(preds == labels).item()
+                running_loss += loss.item()
+                _, preds = torch.max(F.softmax(outputs, dim=1), 1)
+                running_corrects += torch.sum(preds == labels).item()
 
-        train_dataset_size = len(train_data_loader.dataset)
-        epoch_loss = running_loss / train_dataset_size
-        epoch_acc = running_corrects / train_dataset_size
-        print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
-        train_end_time = time.time()
+            train_dataset_size = len(train_data_loader.dataset)
+            epoch_loss = running_loss / train_dataset_size
+            epoch_acc = running_corrects / train_dataset_size
+            print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
+            train_end_time = time.time()
 
-        val(model, val_data_loader, epoch_i, writer)
-        val_end_time = time.time()
+            val(model, val_data_loader, epoch_i, writer)
+            val_end_time = time.time()
 
-        train_time = train_end_time - start_time
-        val_time = val_end_time - train_end_time
-        print('\ttime train {:.4f} val {:.4f}'.format(train_time, val_time))
+            train_time = train_end_time - start_time
+            val_time = val_end_time - train_end_time
+            print('\ttime train {:.4f} val {:.4f}'.format(train_time, val_time))
 
-        if writer:
-            writer.add_scalar('loss_epoch_train', epoch_loss, global_step=epoch_i)
-            writer.add_scalar('acc_epoch_train', epoch_acc, global_step=epoch_i)
-            writer.add_scalar('time_epoch_train', train_time, global_step=epoch_i)
-            writer.add_scalar('time_epoch_val', val_time, global_step=epoch_i)
+            if writer:
+                writer.add_scalar('loss_epoch_train', epoch_loss, global_step=epoch_i)
+                writer.add_scalar('acc_epoch_train', epoch_acc, global_step=epoch_i)
+                writer.add_scalar('time_epoch_train', train_time, global_step=epoch_i)
+                writer.add_scalar('time_epoch_val', val_time, global_step=epoch_i)
+
+    except (RuntimeError, KeyboardInterrupt):
+        save_ckpt(output_dir, model, optimizer, epoch_i, batch_size)
+        print(traceback.format_exc())
 
 
 def cam_tensor(raw_images, feature_convs, weight_softmax):
@@ -141,6 +146,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
     parser.add_argument('--num_class', help='', type=int, default=12)
     parser.add_argument('--write_image_freq', help='', type=int, default=10)
+    parser.add_argument('--output_dir', help='', type=int, default=os.getcwd())
 
     args = vars(parser.parse_args())
 
@@ -149,6 +155,7 @@ if __name__ == '__main__':
     num_epoch = args['num_epoch']
     num_class = args['num_class']
     write_image_freq = args['write_image_freq']
+    output_dir = args['output_dir']
 
 
     image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x], raw_image=True) for x in ['train', 'val']}
