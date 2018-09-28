@@ -127,10 +127,10 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     running_corrects = 0.0
 
     # hook the feature extractor
-    features_blobs = []
+    features_blobs = None
 
     def hook_feature(module, input, output):
-        features_blobs.append(output)
+        features_blobs = output
 
     model.module._modules.get("layer4").register_forward_hook(hook_feature)
     # get the softmax weight
@@ -149,7 +149,7 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
 
-        cams = returnCAM(inputs[0:8].data.cpu().numpy(), features_blobs[0][0:8].data.cpu().numpy(), weight_softmax[preds[0:8]].data.cpu().numpy())
+        cams = returnCAM(inputs[0:8].data.cpu().numpy(), features_blobs[0:8].data.cpu().numpy(), weight_softmax[preds[0:8]].data.cpu().numpy())
         writer.add_image('cam', make_grid(cams, normalize=True))
 
     epoch_loss = running_loss / val_dataset_size
