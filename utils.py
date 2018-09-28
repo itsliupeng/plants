@@ -60,7 +60,7 @@ def draw_label_tensor(label: torch.Tensor, size=(224, 224)):
 
 
 def cat_image_show(*tensors):
-    images = [make_grid(i, nrow=10, normalize=True) for i in tensors.cpu()]
+    images = [make_grid(i.cpu(), nrow=10, normalize=True) for i in tensors]
     total = torch.cat(images).reshape([len(images)] + list(images[0].shape))
     return torchvision.utils.make_grid(total, nrow=1, normalize=True, scale_each=True)
 
