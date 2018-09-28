@@ -33,6 +33,21 @@ class ImageDataSetWithRaw(ImageFolder):
             return sample_aug, target
 
 
+class ImageDataSetWithName(ImageFolder):
+    def __init__(self, root, transform):
+        super(ImageDataSetWithRaw, self).__init__(root, transform)
+
+    def __getitem__(self, index):
+        path, target = self.samples[index]
+        sample = self.loader(path)
+
+        if self.transform is not None:
+            sample_aug = self.transform(sample)
+
+        name = os.path.basename(path)
+        return sample_aug, target, name
+
+
 def draw_label_image(text: str, size=(224, 224)):
     # make a blank image for the text, initialized to transparent text color
     img = Image.new('RGB', size, (0, 0, 0))
@@ -103,3 +118,24 @@ def save_ckpt(output_dir, model, optimizer, epoch, batch_size):
     }, save_name)
 
     print(f'save model {save_name} in {output_dir}')
+
+
+def cam_tensor(raw_images, feature_convs, weight_softmax):
+    # generate the class activation maps upsample to 256x256
+    size_upsample = (256, 256)
+    bz, nc, h, w = feature_convs.shape
+    tensors = []
+    for i in range(bz):
+        cam = weight_softmax[i].dot(feature_convs[i].reshape((nc, h * w)))
+        cam = cam.reshape(h, w)
+        cam = cam - np.min(cam)
+        cam_img = cam / np.max(cam)
+        cam_img = np.uint8(255 * cam_img)
+        cam_img = cv2.resize(cam_img, size_upsample)
+        heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
+        heat_map = np.transpose(heat_map / 255, (2, 0, 1))
+        result_img = heat_map * 0.7 + raw_images[i] * 0.3
+        tensors.append(torch.Tensor(result_img))
+
+    result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
+    return result

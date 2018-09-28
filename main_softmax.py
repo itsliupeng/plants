@@ -11,7 +11,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 import traceback
 
-from utils import ImageDataSetWithRaw, cat_image_show, data_transforms, draw_label_tensor, save_ckpt
+from utils import ImageDataSetWithRaw, cat_image_show, data_transforms, draw_label_tensor, save_ckpt, cam_tensor
 
 use_gpu = torch.cuda.is_available()
 import numpy as np
@@ -79,27 +79,6 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
     except (RuntimeError, KeyboardInterrupt):
         save_ckpt(output_dir, best_model, optimizer, epoch_i, batch_size)
         print(traceback.format_exc())
-
-
-def cam_tensor(raw_images, feature_convs, weight_softmax):
-    # generate the class activation maps upsample to 256x256
-    size_upsample = (256, 256)
-    bz, nc, h, w = feature_convs.shape
-    tensors = []
-    for i in range(bz):
-        cam = weight_softmax[i].dot(feature_convs[i].reshape((nc, h * w)))
-        cam = cam.reshape(h, w)
-        cam = cam - np.min(cam)
-        cam_img = cam / np.max(cam)
-        cam_img = np.uint8(255 * cam_img)
-        cam_img = cv2.resize(cam_img, size_upsample)
-        heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
-        heat_map = np.transpose(heat_map / 255, (2, 0, 1))
-        result_img = heat_map * 0.7 + raw_images[i] * 0.3
-        tensors.append(torch.Tensor(result_img))
-
-    result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
-    return result
 
 
 # noinspection PyShadowingNames,PyShadowingNames
