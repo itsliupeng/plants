@@ -77,7 +77,6 @@ def return_cam(feature_conv, weight_softmax, preds):
     tensors = []
     for i in range(w.size(0)):
         cam = w[i].view((1, -1)).mm(f[i]).reshape((height, width))
-        cam.norm_()
         cam = cam - torch.min(cam)
         cam = cam / torch.max(cam)
         cam_img = cam.cpu().data.numpy()
@@ -120,7 +119,7 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
 
         cams = return_cam(features_blobs[0][0:8], weight_softmax, preds[0:8])
         writer.add_image('cam', make_grid(cams))
-        writer.add_image('val_image', make_grid(input[0:8]))
+        writer.add_image('val_image', make_grid(inputs[0:8]))
 
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
