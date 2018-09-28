@@ -37,9 +37,9 @@ def predict(model, data_loader, writer=None):
             if writer and idx % write_image_freq == 0:
                 cams = cam_tensor(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
                 total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]))
-                writer.add_image('image_raw_pred_label', total_image, global_step=idx)
+                writer.add_image('image_raw_pred', total_image, global_step=idx)
 
-            print(zip(names.cpu().numpy(), preds.cpu.numpy()))
+            print(list(zip(names, preds.cpu().numpy())))
 
     val_dataset_size = len(data_loader.dataset)
     epoch_loss = running_loss / val_dataset_size
@@ -55,7 +55,7 @@ def predict(model, data_loader, writer=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/plants')
+    parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/plants/test')
     parser.add_argument('-b', '--batch_size', help='', type=int, default=4)
     parser.add_argument('--output_dir', help='', type=str, default=os.getcwd())
     parser.add_argument('--model_path', help='', type=str, default='')
