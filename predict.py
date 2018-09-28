@@ -27,21 +27,19 @@ def predict(model, data_loader, writer=None):
     weight_softmax = list(model.module.parameters())[-2]
 
     with torch.no_grad():
-        for idx, (inputs, labels, names) in enumerate(data_loader):
+        for idx, (inputs, names) in enumerate(data_loader):
             if use_gpu:
                 inputs = inputs.cuda()
-                labels = labels.cuda()
 
             outputs = model(inputs)
-            loss = F.cross_entropy(outputs, labels, size_average=False)
-            running_loss += loss.item()
             _, preds = torch.max(F.softmax(outputs, dim=1), 1)
-            running_corrects += torch.sum(preds == labels).item()
 
             if writer and idx % write_image_freq == 0:
                 cams = cam_tensor(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
-                total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]), draw_label_tensor(labels[0:20]))
+                total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]))
                 writer.add_image('image_raw_pred_label', total_image, global_step=idx)
+
+            print(zip(names.cpu().numpy(), preds.cpu.numpy()))
 
     val_dataset_size = len(data_loader.dataset)
     epoch_loss = running_loss / val_dataset_size

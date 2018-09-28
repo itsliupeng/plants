@@ -33,9 +33,21 @@ class ImageDataSetWithRaw(ImageFolder):
             return sample_aug, target
 
 
-class ImageDataSetWithName(ImageFolder):
+def _make_dataset(dir_name):
+    images = []
+    dir_name = os.path.expanduser(dir_name)
+    for fname in sorted(os.listdir(dir_name)):
+        path = os.path.join(dir_name, fname)
+        images.append(path)
+
+    return images
+
+
+class ImageDataSetWithName(torchvision.data.Dataset):
     def __init__(self, root, transform):
-        super(ImageDataSetWithRaw, self).__init__(root, transform)
+        self.root = root
+        self.transform = transform
+        self.samples = _make_dataset(root)
 
     def __getitem__(self, index):
         path, target = self.samples[index]
@@ -45,7 +57,8 @@ class ImageDataSetWithName(ImageFolder):
             sample_aug = self.transform(sample)
 
         name = os.path.basename(path)
-        return sample_aug, target, name
+        return sample_aug, name
+
 
 
 def draw_label_image(text: str, size=(224, 224)):
