@@ -126,16 +126,6 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     running_loss = 0.0
     running_corrects = 0.0
 
-    # hook the feature extractor
-    features_blobs = []
-
-    def hook_feature(module, input, output):
-        features_blobs.append(output)
-
-    model.module._modules.get("layer4").register_forward_hook(hook_feature)
-    # get the softmax weight
-    weight_softmax = list(model.module.parameters())[-2]
-
     val_dataset_size = len(val_data_loader.dataset)
 
     for inputs, labels, _ in val_data_loader:
@@ -188,6 +178,18 @@ if __name__ == '__main__':
     model = torch.nn.DataParallel(model)
     if use_gpu:
         model = model.cuda()
+
+
+    # hook the feature extractor
+    features_blobs = []
+
+    def hook_feature(module, input, output):
+        features_blobs.append(output)
+
+    model.module._modules.get("layer4").register_forward_hook(hook_feature)
+    # get the softmax weight
+    weight_softmax = list(model.module.parameters())[-2]
+
 
     optimizer = optim.Adam(model.module.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 30, 80], gamma=0.1)
