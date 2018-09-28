@@ -101,6 +101,7 @@ def cam_tensor(raw_images, feature_convs, weight_softmax):
     result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
     return result
 
+
 # noinspection PyShadowingNames,PyShadowingNames
 def val(model, val_data_loader, epoch_i=0, writer=None):
     model.eval()
@@ -154,8 +155,11 @@ if __name__ == '__main__':
     parser.add_argument('--num_class', help='', type=int, default=12)
     parser.add_argument('--write_image_freq', help='', type=int, default=10)
     parser.add_argument('--output_dir', help='', type=str, default=os.getcwd())
+    parser.add_argument('--eval', help='', action='store_false')
+    parser.add_argument('--model_path', help='', type=str, default='')
 
     args = vars(parser.parse_args())
+    print(f'args: {args}')
 
     data_dir = args['data_dir']
     batch_size = args['batch_size']
@@ -163,6 +167,8 @@ if __name__ == '__main__':
     num_class = args['num_class']
     write_image_freq = args['write_image_freq']
     output_dir = args['output_dir']
+    is_eval = args['eval']
+    model_path = args['model_path']
 
     image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x], raw_image=True) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
@@ -174,6 +180,12 @@ if __name__ == '__main__':
 
     model = torchvision.models.resnet50(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=num_class)
+
+    if os.path.join(model_path):
+        state_dict = torch.load(model_path)['model']
+        model.load_state_dict(state_dict)
+        print(f'loaded model weights from {model_path}')
+
     model = torch.nn.DataParallel(model)
     if use_gpu:
         model = model.cuda()
@@ -182,7 +194,9 @@ if __name__ == '__main__':
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 30, 80], gamma=0.1)
 
     tb_writer = SummaryWriter(log_dir='logs')
-    val(model, val_data_loader, 0, tb_writer)
-    train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, writer=tb_writer)
+    if is_eval:
+        val(model, val_data_loader, 0, tb_writer)
+    else:
+        train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, writer=tb_writer)
     tb_writer.close()
     print('Done')
