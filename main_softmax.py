@@ -100,22 +100,9 @@ def returnCAM(raw_images, feature_convs, weight_softmax):
         cam_img = np.uint8(255 * cam_img)
         cam_img = cv2.resize(cam_img, size_upsample)
         heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
-        heat_map = np.transpose(heat_map /255, (2, 0, 1))
-        result_img = heat_map * 0.3 + raw_images[i] * 0.7
+        heat_map = np.transpose(heat_map / 255, (2, 0, 1))
+        result_img = heat_map * 0.7 + raw_images[i] * 0.3
         tensors.append(torch.Tensor(result_img))
-
-
-    # for idx in class_idx:
-    #     cam = weight_softmax[idx].dot(feature_convs.reshape((nc, h * w)))
-    #     cam = cam.reshape(h, w)
-    #     cam = cam - np.min(cam)
-    #     cam_img = cam / np.max(cam)
-    #     cam_img = np.uint8(255 * cam_img)
-    #     cam_img = cv2.resize(cam_img, size_upsample)
-    #     heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
-    #     heat_map = np.transpose(heat_map /255, (2, 0, 1))
-    #     result_img = heat_map * 0.3 + raw_images[0] * 0.7
-    #     tensors.append(torch.Tensor(result_img))
 
     result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
     return result
@@ -127,11 +114,10 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     running_corrects = 0.0
 
     # hook the feature extractor
-    global features_blobs
-
     def hook_feature(module, input, output):
         global features_blobs
         features_blobs = output
+
 
     model.module._modules.get("layer4").register_forward_hook(hook_feature)
     # get the softmax weight
@@ -150,8 +136,10 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
 
-        cams = returnCAM(inputs[0:8].data.cpu().numpy(), features_blobs[0:8].data.cpu().numpy(), weight_softmax[preds[0:8]].data.cpu().numpy())
-        writer.add_image('cam', make_grid(cams, normalize=True))
+        if writer:
+            cams = returnCAM(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
+            total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]), draw_label_tensor(labels[0:20]))
+            writer.add_image('image_raw_pred_label', total_image)
 
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
