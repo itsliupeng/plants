@@ -153,7 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
     parser.add_argument('--num_class', help='', type=int, default=12)
     parser.add_argument('--write_image_freq', help='', type=int, default=10)
-    parser.add_argument('--output_dir', help='', type=int, default=os.getcwd())
+    parser.add_argument('--output_dir', help='', type=str, default=os.getcwd())
 
     args = vars(parser.parse_args())
 
