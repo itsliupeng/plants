@@ -19,6 +19,8 @@ import numpy as np
 
 # noinspection PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames
 def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epochs, writer=None):
+    best_val_loss = np.finfo(float).max
+    best_model = None
     try:
         for epoch_i in range(num_epochs):
             start_time = time.time()
@@ -56,8 +58,12 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             print('\t{:5s} loss {:.4f} acc {:.4f}'.format('train', epoch_loss, epoch_acc))
             train_end_time = time.time()
 
-            val(model, val_data_loader, epoch_i, writer)
+            val_loss, _ = val(model, val_data_loader, epoch_i, writer)
             val_end_time = time.time()
+
+            if best_val_loss > val_loss:
+                best_model = model
+                best_val_loss = val_loss
 
             train_time = train_end_time - start_time
             val_time = val_end_time - train_end_time
@@ -69,8 +75,9 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
                 writer.add_scalar('time_epoch_train', train_time, global_step=epoch_i)
                 writer.add_scalar('time_epoch_val', val_time, global_step=epoch_i)
 
+        save_ckpt(output_dir, best_model, optimizer, epoch_i, batch_size)
     except (RuntimeError, KeyboardInterrupt):
-        save_ckpt(output_dir, model, optimizer, epoch_i, batch_size)
+        save_ckpt(output_dir, best_model, optimizer, epoch_i, batch_size)
         print(traceback.format_exc())
 
 
@@ -156,7 +163,6 @@ if __name__ == '__main__':
     num_class = args['num_class']
     write_image_freq = args['write_image_freq']
     output_dir = args['output_dir']
-
 
     image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x], raw_image=True) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
