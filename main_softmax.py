@@ -31,9 +31,9 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
         running_loss = 0.0
         running_corrects = 0.0
 
-        for inputs, labels, raw_images in train_data_loader:
-            if writer:
-                writer.add_image('raw-crop-label', cat_image_show(raw_images[0:20], inputs[0:20], draw_label_tensor(labels[0:20])))
+        for idx, (inputs, labels, raw_images) in enumerate(train_data_loader):
+            if writer and idx % write_image_freq == 0:
+                writer.add_image('raw-crop-label', cat_image_show(raw_images[0:20], inputs[0:20], draw_label_tensor(labels[0:20])), global_step=idx)
 
             if use_gpu:
                 inputs = inputs.cuda()
@@ -69,25 +69,7 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             writer.add_scalar('time_epoch_val', val_time, global_step=epoch_i)
 
 
-# def return_cam(feature_conv, weight_softmax, preds):
-#     bz, nc, height, width = feature_conv.shape
-#     w = weight_softmax[preds].cuda(0)
-#     f = feature_conv.reshape((bz, nc, height*width)).cuda(0)
-#     assert w.size(0) == f.size(0)
-#     tensors = []
-#     for i in range(w.size(0)):
-#         cam = w[i].view((1, -1)).mm(f[i]).reshape((height, width))
-#         cam = cam - torch.min(cam)
-#         cam = cam / torch.max(cam)
-#         cam_img = cam.cpu().data.numpy()
-#         cam_img = np.uint8(255 * cam_img)
-#         heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
-#         tensors.append(torch.Tensor(np.transpose(heat_map, (2, 0, 1))))
-#
-#     result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
-#     return result
-
-def returnCAM(raw_images, feature_convs, weight_softmax):
+def cam_tensor(raw_images, feature_convs, weight_softmax):
     # generate the class activation maps upsample to 256x256
     size_upsample = (256, 256)
     bz, nc, h, w = feature_convs.shape
@@ -123,24 +105,24 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     # get the softmax weight
     weight_softmax = list(model.module.parameters())[-2]
 
+    with torch.no_grad():
+        for idx, (inputs, labels, _) in enumerate(val_data_loader):
+            if use_gpu:
+                inputs = inputs.cuda()
+                labels = labels.cuda()
+
+            outputs = model(inputs)
+            loss = F.cross_entropy(outputs, labels, size_average=False)
+            running_loss += loss.item()
+            _, preds = torch.max(F.softmax(outputs, dim=1), 1)
+            running_corrects += torch.sum(preds == labels).item()
+
+            if writer and idx % write_image_freq == 0:
+                cams = cam_tensor(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
+                total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]), draw_label_tensor(labels[0:20]))
+                writer.add_image('image_raw_pred_label', total_image, global_step=idx)
+
     val_dataset_size = len(val_data_loader.dataset)
-
-    for inputs, labels, _ in val_data_loader:
-        if use_gpu:
-            inputs = inputs.cuda()
-            labels = labels.cuda()
-
-        outputs = model(inputs)
-        loss = F.cross_entropy(outputs, labels, size_average=False)
-        running_loss += loss.item()
-        _, preds = torch.max(F.softmax(outputs, dim=1), 1)
-        running_corrects += torch.sum(preds == labels).item()
-
-        if writer:
-            cams = returnCAM(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
-            total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]), draw_label_tensor(labels[0:20]))
-            writer.add_image('image_raw_pred_label', total_image)
-
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
     print('\t{:5s} loss {:.4f} acc {:.4f}'.format('val', epoch_loss, epoch_acc))
@@ -149,6 +131,8 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
         writer.add_scalar('loss_epoch_val', epoch_loss, global_step=epoch_i)
         writer.add_scalar('acc_epoch_val', epoch_acc, global_step=epoch_i)
 
+    return epoch_loss, epoch_acc
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -156,6 +140,7 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--batch_size', help='', type=int, default=4)
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
     parser.add_argument('--num_class', help='', type=int, default=12)
+    parser.add_argument('--write_image_freq', help='', type=int, default=10)
 
     args = vars(parser.parse_args())
 
@@ -163,6 +148,8 @@ if __name__ == '__main__':
     batch_size = args['batch_size']
     num_epoch = args['num_epoch']
     num_class = args['num_class']
+    write_image_freq = args['write_image_freq']
+
 
     image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x], raw_image=True) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
