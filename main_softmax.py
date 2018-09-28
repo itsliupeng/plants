@@ -136,6 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--batch_size', help='', type=int, default=4)
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
     parser.add_argument('--num_class', help='', type=int, default=2)
+
     args = vars(parser.parse_args())
 
     data_dir = args['data_dir']
@@ -161,6 +162,7 @@ if __name__ == '__main__':
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 30, 80], gamma=0.1)
 
     tb_writer = SummaryWriter(log_dir='logs')
+    val(model, val_data_loader, 0, tb_writer)
     train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_epoch, writer=tb_writer)
     tb_writer.close()
     print('Done')
