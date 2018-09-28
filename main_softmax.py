@@ -9,6 +9,7 @@ import torchvision
 from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
+from torchvision.utils import make_grid
 
 from utils import ImageDataSetWithRaw, cat_image_show, data_transforms, draw_label_tensor
 
@@ -68,22 +69,21 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             writer.add_scalar('time_epoch_val', val_time, global_step=epoch_i)
 
 
-def returnCAM(feature_conv, weight_softmax, preds):
-    # generate the class activation maps upsample to 256x256
+def return_cam(feature_conv, weight_softmax, preds):
     bz, nc, height, width = feature_conv.shape
-    output_cam = []
-    w = weight_softmax[preds]
-    f = feature_conv.reshape((bz, nc, height*width))
+    w = weight_softmax[preds].cuda(0)
+    f = feature_conv.reshape((bz, nc, height*width)).cuda(0)
     assert w.size(0) == f.size(0)
     tensors = []
     for i in range(w.size(0)):
         cam = w[i].view((1, -1)).mm(f[i]).reshape((height, width))
+        cam.norm_()
         cam = cam - torch.min(cam)
-        cam_img = cam / torch.max(cam)
-        cam_img = cam_img.cpu().data.numpy()
+        cam = cam / torch.max(cam)
+        cam_img = cam.cpu().data.numpy()
         cam_img = np.uint8(255 * cam_img)
-        heatmap = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
-        tensors.append(torch.Tensor(np.transpose(heatmap, (2, 0, 1))))
+        heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
+        tensors.append(torch.Tensor(np.transpose(heat_map, (2, 0, 1))))
 
     result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
     return result
@@ -105,7 +105,6 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     # get the softmax weight
     weight_softmax = list(model.module.parameters())[-2]
 
-
     val_dataset_size = len(val_data_loader.dataset)
 
     for inputs, labels, _ in val_data_loader:
@@ -119,8 +118,9 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
 
-        cams = returnCAM(features_blobs[0][0:8], weight_softmax, preds[0:8])
-        writer.add_image('cam', torchvision.utils.make_grid(cams))
+        cams = return_cam(features_blobs[0][0:8], weight_softmax, preds[0:8])
+        writer.add_image('cam', make_grid(cams))
+        writer.add_image('val_image', make_grid(input[0:8]))
 
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
