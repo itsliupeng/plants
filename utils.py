@@ -6,6 +6,7 @@ from torchvision.datasets import ImageFolder
 from torchvision.utils import make_grid
 import os
 from torch.utils.data import Dataset
+import cv2
 
 
 class ImageDataSetWithRaw(ImageFolder):
@@ -52,7 +53,7 @@ class ImageDataSetWithName(Dataset):
         self.samples = _make_dataset(root)
 
     def __getitem__(self, index):
-        path, target = self.samples[index]
+        path = self.samples[index]
         sample = self.loader(path)
 
         if self.transform is not None:

@@ -1,7 +1,6 @@
 import argparse
 import os
 import time
-import cv2
 
 import torch
 import torch.nn.functional as F
