@@ -69,24 +69,56 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             writer.add_scalar('time_epoch_val', val_time, global_step=epoch_i)
 
 
-def return_cam(feature_conv, weight_softmax, preds):
-    bz, nc, height, width = feature_conv.shape
-    w = weight_softmax[preds].cuda(0)
-    f = feature_conv.reshape((bz, nc, height*width)).cuda(0)
-    assert w.size(0) == f.size(0)
+# def return_cam(feature_conv, weight_softmax, preds):
+#     bz, nc, height, width = feature_conv.shape
+#     w = weight_softmax[preds].cuda(0)
+#     f = feature_conv.reshape((bz, nc, height*width)).cuda(0)
+#     assert w.size(0) == f.size(0)
+#     tensors = []
+#     for i in range(w.size(0)):
+#         cam = w[i].view((1, -1)).mm(f[i]).reshape((height, width))
+#         cam = cam - torch.min(cam)
+#         cam = cam / torch.max(cam)
+#         cam_img = cam.cpu().data.numpy()
+#         cam_img = np.uint8(255 * cam_img)
+#         heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
+#         tensors.append(torch.Tensor(np.transpose(heat_map, (2, 0, 1))))
+#
+#     result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
+#     return result
+
+def returnCAM(raw_images, feature_convs, weight_softmax):
+    # generate the class activation maps upsample to 256x256
+    size_upsample = (256, 256)
+    bz, nc, h, w = feature_convs.shape
     tensors = []
-    for i in range(w.size(0)):
-        cam = w[i].view((1, -1)).mm(f[i]).reshape((height, width))
-        cam = cam - torch.min(cam)
-        cam = cam / torch.max(cam)
-        cam_img = cam.cpu().data.numpy()
+    for i in range(bz):
+        cam = weight_softmax[i].dot(feature_convs[i].reshape((nc, h * w)))
+        cam = cam.reshape(h, w)
+        cam = cam - np.min(cam)
+        cam_img = cam / np.max(cam)
         cam_img = np.uint8(255 * cam_img)
+        cam_img = cv2.resize(cam_img, size_upsample)
         heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
-        tensors.append(torch.Tensor(np.transpose(heat_map, (2, 0, 1))))
+        heat_map = np.transpose(heat_map /255, (2, 0, 1))
+        result_img = heat_map * 0.3 + raw_images[i] * 0.7
+        tensors.append(torch.Tensor(result_img))
+
+
+    # for idx in class_idx:
+    #     cam = weight_softmax[idx].dot(feature_convs.reshape((nc, h * w)))
+    #     cam = cam.reshape(h, w)
+    #     cam = cam - np.min(cam)
+    #     cam_img = cam / np.max(cam)
+    #     cam_img = np.uint8(255 * cam_img)
+    #     cam_img = cv2.resize(cam_img, size_upsample)
+    #     heat_map = cv2.applyColorMap(cv2.resize(cam_img, (224, 224)), cv2.COLORMAP_JET)
+    #     heat_map = np.transpose(heat_map /255, (2, 0, 1))
+    #     result_img = heat_map * 0.3 + raw_images[0] * 0.7
+    #     tensors.append(torch.Tensor(result_img))
 
     result = torch.cat(tensors).reshape([len(tensors)] + list(tensors[0].shape))
     return result
-
 
 # noinspection PyShadowingNames,PyShadowingNames
 def val(model, val_data_loader, epoch_i=0, writer=None):
@@ -117,9 +149,8 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
         _, preds = torch.max(F.softmax(outputs, dim=1), 1)
         running_corrects += torch.sum(preds == labels).item()
 
-        cams = return_cam(features_blobs[0][0:8], weight_softmax, preds[0:8])
-        writer.add_image('cam', make_grid(cams))
-        writer.add_image('val_image', make_grid(inputs[0:8]))
+        cams = returnCAM(inputs[0:8].data.cpu().numpy(), features_blobs[0][0:8].data.cpu().numpy(), weight_softmax[preds[0:8]].data.cpu().numpy())
+        writer.add_image('cam', make_grid(cams, normalize=True))
 
     epoch_loss = running_loss / val_dataset_size
     epoch_acc = running_corrects / val_dataset_size
@@ -135,7 +166,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/plants')
     parser.add_argument('-b', '--batch_size', help='', type=int, default=4)
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
-    parser.add_argument('--num_class', help='', type=int, default=2)
+    parser.add_argument('--num_class', help='', type=int, default=12)
 
     args = vars(parser.parse_args())
 
