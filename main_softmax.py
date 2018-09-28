@@ -127,9 +127,10 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     running_corrects = 0.0
 
     # hook the feature extractor
-    features_blobs = None
+    global features_blobs
 
     def hook_feature(module, input, output):
+        global features_blobs
         features_blobs = output
 
     model.module._modules.get("layer4").register_forward_hook(hook_feature)
