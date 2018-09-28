@@ -155,7 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_class', help='', type=int, default=12)
     parser.add_argument('--write_image_freq', help='', type=int, default=10)
     parser.add_argument('--output_dir', help='', type=str, default=os.getcwd())
-    parser.add_argument('--eval', help='', action='store_false')
+    parser.add_argument('--eval', help='', action='store_true')
     parser.add_argument('--model_path', help='', type=str, default='')
 
     args = vars(parser.parse_args())
