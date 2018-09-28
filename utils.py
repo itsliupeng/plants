@@ -56,11 +56,11 @@ to_tensor = torchvision.transforms.ToTensor()
 
 
 def draw_label_tensor(label: torch.Tensor, size=(224, 224)):
-    return torch.cat([to_tensor(draw_label_image(str(i), size)) for i in label.numpy()]).reshape((-1, 3, size[0], size[1]))
+    return torch.cat([to_tensor(draw_label_image(str(i), size)) for i in label.data.cpu().numpy()]).reshape((-1, 3, size[0], size[1]))
 
 
 def cat_image_show(*tensors):
-    images = [make_grid(i, nrow=10, normalize=True) for i in tensors]
+    images = [make_grid(i, nrow=10, normalize=True) for i in tensors.cpu()]
     total = torch.cat(images).reshape([len(images)] + list(images[0].shape))
     return torchvision.utils.make_grid(total, nrow=1, normalize=True, scale_each=True)
 
