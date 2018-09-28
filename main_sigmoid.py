@@ -115,7 +115,7 @@ if __name__ == '__main__':
     print(class_to_idx)
 
     train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
-    val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
+    val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
 
     model = torchvision.models.resnet50(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=1)
