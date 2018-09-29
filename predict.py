@@ -7,14 +7,13 @@ from torch.utils.data import DataLoader
 from utils import ImageDataSetWithName, data_transforms, cam_tensor, draw_label_tensor,cat_image_show
 from torch.nn import functional as F
 from tensorboardX import SummaryWriter
+from functools import reduce
 
 use_gpu = torch.cuda.is_available()
 
 
 def predict(model, data_loader, writer=None):
     model.eval()
-    running_loss = 0.0
-    running_corrects = 0.0
 
     # hook the feature extractor
     def hook_feature(module, input, output):
@@ -26,31 +25,25 @@ def predict(model, data_loader, writer=None):
     # get the softmax weight
     weight_softmax = list(model.module.parameters())[-2]
 
+    pred_result = []
     with torch.no_grad():
         for idx, (inputs, names) in enumerate(data_loader):
             if use_gpu:
                 inputs = inputs.cuda()
 
             outputs = model(inputs)
-            probability, preds = torch.max(F.softmax(outputs, dim=1), 1)
+            prob, preds = torch.max(F.softmax(outputs, dim=1), 1)
 
             if writer and idx % write_image_freq == 0:
                 cams = cam_tensor(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
                 total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]))
                 writer.add_image('image_raw_pred', total_image, global_step=idx)
 
-            print(list(zip(names, probability.cpu().numpy())))
+            pred_result.append(list(zip(names, prob.cpu().numpy())))
 
-    val_dataset_size = len(data_loader.dataset)
-    epoch_loss = running_loss / val_dataset_size
-    epoch_acc = running_corrects / val_dataset_size
-    print('\t{:5s} loss {:.4f} acc {:.4f}'.format('val', epoch_loss, epoch_acc))
+    pred_result = reduce(lambda a, b: a + b, pred_result)
 
-    if writer:
-        writer.add_scalar('loss_epoch_val', epoch_loss)
-        writer.add_scalar('acc_epoch_val', epoch_acc)
-
-    return epoch_loss, epoch_acc
+    return pred_result
 
 
 if __name__ == '__main__':
@@ -84,7 +77,13 @@ if __name__ == '__main__':
 
     data_loader = DataLoader(ImageDataSetWithName(data_dir, data_transforms['val']), batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
     tb_writer = SummaryWriter(log_dir='logs')
-    predict(model, data_loader, tb_writer)
+    pred_result = predict(model, data_loader, tb_writer)
     tb_writer.close()
 
+    with open(os.path.join(output_dir, 'predict_result.csv')) as f:
+        f.write('id,prob\n')
+        for (id, prob) in pred_result:
+            f.write(f'{id},{prob}\n')
+
     print('Done')
+
