@@ -133,11 +133,11 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/plants')
-    parser.add_argument('-b', '--batch_size', help='', type=int, default=4)
+    parser.add_argument('-d', '--data_dir', help='', type=str, default='/Users/liupeng/data/two_class')
+    parser.add_argument('-b', '--batch_size', help='', type=int, default=32)
     parser.add_argument('-n', '--num_epoch', help='', type=int, default=30)
-    parser.add_argument('--num_class', help='', type=int, default=12)
-    parser.add_argument('--write_image_freq', help='', type=int, default=10)
+    parser.add_argument('--num_class', help='', type=int, default=2)
+    parser.add_argument('--write_image_freq', help='', type=int, default=30)
     parser.add_argument('--output_dir', help='', type=str, default=os.getcwd())
     parser.add_argument('--eval', help='', action='store_true')
     parser.add_argument('--model_path', help='', type=str, default='')
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     num_class = args['num_class']
     write_image_freq = args['write_image_freq']
     output_dir = args['output_dir']
-    is_eval = args['eval']
+    is_eval = args['is_eval']
     model_path = args['model_path']
 
     image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x], raw_image=True) for x in ['train', 'val']}
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     print(class_to_idx)
 
     train_data_loader = DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
-    val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
+    val_data_loader = DataLoader(image_datasets['val'], batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True, drop_last=True)
 
     model = torchvision.models.resnet50(pretrained=True)
     model.fc = nn.Linear(in_features=2048, out_features=num_class)
