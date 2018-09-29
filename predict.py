@@ -32,14 +32,16 @@ def predict(model, data_loader, writer=None):
                 inputs = inputs.cuda()
 
             outputs = model(inputs)
-            prob, preds = torch.max(F.softmax(outputs, dim=1), 1)
+            softmax = F.softmax(outputs, dim=1)
+            one_prob = softmax[:, 1]
+            _, preds = torch.max(softmax, 1)
 
             if writer and idx % write_image_freq == 0:
-                cams = cam_tensor(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
-                total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]))
+                cams = cam_tensor(inputs[0:20].cpu().numpy(), features_blobs[0:20].cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
+                total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]), draw_label_tensor(one_prob[0:20]))
                 writer.add_image('image_raw_pred', total_image, global_step=idx)
 
-            pred_result.append(list(zip(names, prob.cpu().numpy())))
+            pred_result.append(list(zip(names, ['{:.3f}'.format(i) for i in one_prob.cpu().numpy()])))
 
     pred_result = reduce(lambda a, b: a + b, pred_result)
 

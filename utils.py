@@ -91,8 +91,15 @@ def draw_label_image(text: str, size=(224, 224)):
 to_tensor = torchvision.transforms.ToTensor()
 
 
+def to_fix_format(i):
+    if isinstance(i, int) or isinstance(i, np.int32) or isinstance(i, np.int64):
+        return str(i)
+    else:
+        return '{:.2f}'.format(i)
+
+
 def draw_label_tensor(label: torch.Tensor, size=(224, 224)):
-    return torch.cat([to_tensor(draw_label_image(str(i), size)) for i in label.data.cpu().numpy()]).reshape((-1, 3, size[0], size[1]))
+    return torch.cat([to_tensor(draw_label_image(to_fix_format(i), size)) for i in label.data.cpu().numpy()]).reshape((-1, 3, size[0], size[1]))
 
 
 def cat_image_show(*tensors):
