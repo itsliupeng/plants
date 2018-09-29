@@ -96,6 +96,8 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     # get the softmax weight
     weight_softmax = list(model.module.parameters())[-2]
 
+    all_labels = []
+    all_preds = []
     with torch.no_grad():
         for idx, (inputs, labels, _) in enumerate(val_data_loader):
             if use_gpu:
@@ -107,6 +109,9 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
             running_loss += loss.item()
             _, preds = torch.max(F.softmax(outputs, dim=1), 1)
             running_corrects += torch.sum(preds == labels).item()
+
+            all_labels.append(labels)
+            all_preds.append(preds)
 
             if writer and idx % write_image_freq == 0:
                 cams = cam_tensor(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
@@ -121,6 +126,7 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     if writer:
         writer.add_scalar('loss_epoch_val', epoch_loss, global_step=epoch_i)
         writer.add_scalar('acc_epoch_val', epoch_acc, global_step=epoch_i)
+        writer.add_pr_curve('pr', torch.cat(all_labels), torch.cat(all_preds), global_step=epoch_i)
 
     return epoch_loss, epoch_acc
 
