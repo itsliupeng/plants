@@ -91,10 +91,9 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
         global features_blobs
         features_blobs = output
 
-
     model.module._modules.get("layer4").register_forward_hook(hook_feature)
     # get the softmax weight
-    weight_softmax = list(model.module.parameters())[-2]
+    weight_softmax_np = list(model.module.parameters())[-2].data.cpu().numpy()
 
     all_labels = []
     all_preds = []
@@ -107,14 +106,16 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
             outputs = model(inputs)
             loss = F.cross_entropy(outputs, labels, size_average=False)
             running_loss += loss.item()
-            _, preds = torch.max(F.softmax(outputs, dim=1), 1)
+            soft_max = F.softmax(outputs, dim=1)
+            _, preds = torch.max(soft_max, 1)
+            one_prob = soft_max[:, 1]
             running_corrects += torch.sum(preds == labels).item()
 
-            all_labels.append(labels)
-            all_preds.append(preds)
+            all_labels.append(labels.cpu().numpy())
+            all_preds.append(one_prob.cpu().numpy())
 
             if writer and idx % write_image_freq == 0:
-                cams = cam_tensor(inputs[0:20].data.cpu().numpy(), features_blobs[0:20].data.cpu().numpy(), weight_softmax[preds[0:20]].data.cpu().numpy())
+                cams = cam_tensor(inputs[0:20].cpu().numpy(), features_blobs[0:20].cpu().numpy(), weight_softmax_np[preds[0:20]])
                 total_image = cat_image_show(inputs[0:20], cams, draw_label_tensor(preds[0:20]), draw_label_tensor(labels[0:20]))
                 writer.add_image('image_raw_pred_label', total_image, global_step=idx)
 
@@ -126,7 +127,7 @@ def val(model, val_data_loader, epoch_i=0, writer=None):
     if writer:
         writer.add_scalar('loss_epoch_val', epoch_loss, global_step=epoch_i)
         writer.add_scalar('acc_epoch_val', epoch_acc, global_step=epoch_i)
-        writer.add_pr_curve('pr', torch.cat(all_labels), torch.cat(all_preds), global_step=epoch_i)
+        writer.add_pr_curve('pr', np.concatenate(all_labels), np.concatenate(all_preds), global_step=epoch_i)
 
     return epoch_loss, epoch_acc
 
