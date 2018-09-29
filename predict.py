@@ -80,7 +80,7 @@ if __name__ == '__main__':
     pred_result = predict(model, data_loader, tb_writer)
     tb_writer.close()
 
-    with open(os.path.join(output_dir, 'predict_result.csv')) as f:
+    with open(os.path.join(output_dir, 'predict_result.csv'), 'w') as f:
         f.write('id,prob\n')
         for (id, prob) in pred_result:
             f.write(f'{id},{prob}\n')
