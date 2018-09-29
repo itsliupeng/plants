@@ -151,7 +151,7 @@ if __name__ == '__main__':
     num_class = args['num_class']
     write_image_freq = args['write_image_freq']
     output_dir = args['output_dir']
-    is_eval = args['is_eval']
+    is_eval = args['eval']
     model_path = args['model_path']
 
     image_datasets = {x: ImageDataSetWithRaw(os.path.join(data_dir, x), data_transforms[x], raw_image=True) for x in ['train', 'val']}
