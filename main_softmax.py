@@ -1,19 +1,19 @@
 import argparse
 import os
 import time
+import traceback
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torchvision
 from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
-import traceback
 
-from utils import ImageDataSetWithRaw, cat_image_show, data_transforms, draw_label_tensor, save_ckpt, cam_tensor
+from utils import ImageDataSetWithRaw, cam_tensor, cat_image_show, data_transforms, draw_label_tensor, save_ckpt
 
 use_gpu = torch.cuda.is_available()
-import numpy as np
 
 
 # noinspection PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames,PyShadowingNames
@@ -36,6 +36,8 @@ def train(model, train_data_loader, val_data_loader, optimizer, scheduler, num_e
             for idx, (inputs, labels, raw_images) in enumerate(train_data_loader):
                 if writer and idx % write_image_freq == 0:
                     writer.add_image('raw-crop-label', cat_image_show(raw_images[0:20], inputs[0:20], draw_label_tensor(labels[0:20])), global_step=idx)
+                    for name, param in model.module.named_parameters():
+                        writer.add_histogram(name, param.clone().cpu().data.numpy(), global_step=idx)
 
                 if use_gpu:
                     inputs = inputs.cuda()
